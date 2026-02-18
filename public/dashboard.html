@@ -1,0 +1,618 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LinkSnap - Dashboard</title>
+    <link href="https://cdn.jsdelivr.net/npm/daisyui@4.4.19/dist/full.min.css" rel="stylesheet" type="text/css" />
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        .folder-actions {
+            display: none;
+        }
+
+        .folder-item:hover .folder-actions {
+            display: flex;
+        }
+    </style>
+</head>
+
+<body class="bg-base-200 h-screen flex overflow-hidden font-sans text-base-content">
+    <aside class="w-64 bg-base-100 border-r border-base-300 flex flex-col z-20 shrink-0">
+        <div class="h-16 flex items-center px-6 border-b border-base-300 gap-3 text-primary">
+            <i data-lucide="camera" class="w-6 h-6"></i>
+            <span class="font-bold text-xl tracking-tight">LinkSnap</span>
+        </div>
+
+        <nav class="flex-1 overflow-y-auto p-4 space-y-1">
+            <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mb-2 px-2">Library</div>
+            <button onclick="filterLinks('all')" id="nav-all"
+                class="btn btn-ghost btn-sm w-full justify-start gap-3 active">
+                <i data-lucide="layout-grid" class="w-4 h-4"></i> All Snaps
+            </button>
+            <button onclick="filterLinks('favorites')" id="nav-favorites"
+                class="btn btn-ghost btn-sm w-full justify-start gap-3">
+                <i data-lucide="heart" class="w-4 h-4"></i> Favorites
+            </button>
+            <button onclick="filterLinks('archive')" id="nav-archive"
+                class="btn btn-ghost btn-sm w-full justify-start gap-3">
+                <i data-lucide="archive" class="w-4 h-4"></i> Archive
+            </button>
+            <button onclick="switchView('tags')" id="nav-tags" class="btn btn-ghost btn-sm w-full justify-start gap-3">
+                <i data-lucide="tag" class="w-4 h-4"></i> Manage Tags
+            </button>
+
+            <div class="flex items-center justify-between mt-6 mb-2 px-2 group">
+                <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider">Folders</div>
+                <button onclick="folder_modal.showModal()"
+                    class="btn btn-ghost btn-xs btn-square text-base-content/50 hover:text-primary" title="Add Folder">
+                    <i data-lucide="plus" class="w-3 h-3"></i>
+                </button>
+            </div>
+            <div id="folder-list" class="space-y-1">
+                <!-- Folders loaded here -->
+            </div>
+
+            <div id="admin-section" class="hidden">
+                <div class="text-xs font-semibold text-base-content/50 uppercase tracking-wider mt-6 mb-2 px-2">System
+                </div>
+                <button onclick="switchView('admin')" id="nav-admin"
+                    class="btn btn-ghost btn-sm w-full justify-start gap-3 text-warning">
+                    <i data-lucide="shield" class="w-4 h-4"></i> Admin Panel
+                </button>
+            </div>
+        </nav>
+
+        <div class="p-4 border-t border-base-300 bg-base-100">
+            <div class="flex items-center gap-2">
+                <div class="avatar placeholder">
+                    <div class="bg-neutral text-neutral-content rounded-full w-8">
+                        <img id="user-avatar" src="" class="hidden">
+                        <span id="user-initials" class="text-xs">U</span>
+                    </div>
+                </div>
+                <div class="flex-1 overflow-hidden">
+                    <p id="user-name" class="text-sm font-medium truncate">User</p>
+                    <button onclick="logout()" class="text-xs text-error hover:underline">Logout</button>
+                </div>
+
+                <label class="swap swap-rotate btn btn-ghost btn-circle btn-sm">
+                    <input type="checkbox" id="theme-toggle" onchange="toggleTheme()" />
+                    <i data-lucide="sun" class="swap-on w-4 h-4"></i>
+                    <i data-lucide="moon" class="swap-off w-4 h-4"></i>
+                </label>
+            </div>
+        </div>
+    </aside>
+
+    <main class="flex-1 flex flex-col min-w-0 bg-base-200 relative">
+        <div id="view-library" class="flex flex-col h-full absolute inset-0">
+            <header class="h-16 bg-base-100 border-b border-base-300 flex items-center justify-between px-8 shrink-0">
+                <div class="flex items-center gap-4 flex-1">
+                    <div class="relative w-full max-w-md">
+                        <input type="text" id="search-input" placeholder="Search links..."
+                            class="input input-bordered input-sm w-full !pl-10 rounded-lg" oninput="renderLinks()" />
+                        <i data-lucide="search" class="w-4 h-4 absolute left-3 top-2 text-base-content/50"></i>
+                    </div>
+                </div>
+                <button onclick="openSaveModal()" class="btn btn-primary btn-sm gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i> Save Link
+                </button>
+            </header>
+
+            <div class="flex-1 overflow-y-auto p-8">
+                <div class="flex items-center justify-between mb-6">
+                    <h2 class="text-2xl font-bold text-base-content" id="page-title">My Library</h2>
+                    <span class="text-sm text-base-content/60" id="link-count">Loading...</span>
+                </div>
+                <div id="link-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6"></div>
+            </div>
+        </div>
+
+        <div id="view-tags" class="flex flex-col h-full absolute inset-0 hidden bg-base-200 overflow-y-auto p-8">
+            <div class="max-w-4xl mx-auto w-full space-y-8">
+                <h1 class="text-3xl font-bold flex items-center gap-3 text-base-content">
+                    <i data-lucide="tags" class="w-8 h-8 text-primary"></i> Manage Tags
+                </h1>
+
+                <div class="card bg-base-100 shadow-sm border border-base-200">
+                    <div class="card-body p-6">
+                        <h2 class="card-title text-sm mb-2">Create New Tag</h2>
+                        <form onsubmit="createTagFromManager(event)" class="flex gap-2">
+                            <input id="manager-tag-name" class="input input-bordered w-full" placeholder="Tag Name"
+                                required />
+                            <select id="manager-tag-color" class="select select-bordered w-32">
+                                <option value="primary">Blue</option>
+                                <option value="secondary">Pink</option>
+                                <option value="accent">Teal</option>
+                                <option value="success">Green</option>
+                                <option value="warning">Yellow</option>
+                                <option value="error">Red</option>
+                            </select>
+                            <button type="submit" class="btn btn-primary">Add Tag</button>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" id="tags-manager-grid">
+                    <!-- Tags rendered here -->
+                </div>
+            </div>
+        </div>
+
+        <div id="view-admin" class="flex flex-col h-full absolute inset-0 hidden bg-base-200 overflow-y-auto p-8">
+            <div class="max-w-4xl mx-auto w-full space-y-8">
+                <div class="flex items-center justify-between">
+                    <h1 class="text-3xl font-bold flex items-center gap-3 text-base-content">
+                        <i data-lucide="shield" class="w-8 h-8 text-primary"></i> Admin Panel
+                    </h1>
+                    <button onclick="switchView('library')" class="btn btn-sm btn-outline">Close</button>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                    <div class="stat bg-base-100 shadow rounded-box">
+                        <div class="stat-figure text-primary"><i data-lucide="users" class="w-8 h-8"></i></div>
+                        <div class="stat-title">Total Users</div>
+                        <div class="stat-value text-primary" id="stat-users">-</div>
+                    </div>
+                    <div class="stat bg-base-100 shadow rounded-box">
+                        <div class="stat-figure text-secondary"><i data-lucide="link" class="w-8 h-8"></i></div>
+                        <div class="stat-title">Total Links</div>
+                        <div class="stat-value text-secondary" id="stat-links">-</div>
+                    </div>
+                    <div class="stat bg-base-100 shadow rounded-box">
+                        <div class="stat-figure text-accent"><i data-lucide="activity" class="w-8 h-8"></i></div>
+                        <div class="stat-title">Uptime</div>
+                        <div class="stat-value text-accent text-lg" id="stat-uptime">-</div>
+                    </div>
+                    <div class="stat bg-base-100 shadow rounded-box">
+                        <div class="stat-figure text-info"><i data-lucide="cpu" class="w-8 h-8"></i></div>
+                        <div class="stat-title">Memory</div>
+                        <div class="stat-value text-info text-lg" id="stat-mem">-</div>
+                    </div>
+                </div>
+                <div class="card bg-base-100 shadow-xl">
+                    <div class="card-body">
+                        <h2 class="card-title mb-4">Create New User</h2>
+                        <form onsubmit="createUser(event)" class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <input type="text" id="new-name" placeholder="Name" required class="input input-bordered">
+                            <input type="email" id="new-email" placeholder="Email" required
+                                class="input input-bordered">
+                            <input type="password" id="new-pass" placeholder="Password" required
+                                class="input input-bordered md:col-span-2">
+                            <button type="submit" class="btn btn-success text-white md:col-span-2">Create
+                                Account</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <dialog id="save_modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg mb-4" id="modal-title">Save New Link</h3>
+            <form onsubmit="handleLinkSubmit(event)" class="flex flex-col gap-4">
+                <input type="hidden" id="edit-link-id">
+                <input type="url" id="url-input" required placeholder="https://example.com"
+                    class="input input-bordered w-full">
+                <input type="text" id="title-input" placeholder="Title (Optional)" class="input input-bordered w-full">
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Folder</span></label>
+                    <select id="folder-select" class="select select-bordered">
+                        <option value="">Unsorted</option>
+                    </select>
+                </div>
+
+                <div class="form-control w-full">
+                    <label class="label"><span class="label-text">Tags (Click to select)</span></label>
+                    <div id="tag-selection-area" class="flex flex-wrap gap-2 mb-2 p-2 border rounded-lg min-h-[3rem]">
+                    </div>
+                    <div class="label">
+                        <span class="label-text-alt text-base-content/60">Manage tags in the <a
+                                onclick="save_modal.close(); switchView('tags')"
+                                class="link link-primary cursor-pointer">Tags Page</a></span>
+                    </div>
+                </div>
+
+                <div class="modal-action">
+                    <button type="button" class="btn" onclick="save_modal.close()">Cancel</button>
+                    <button type="submit" class="btn btn-primary" id="save-btn-text">Snap & Save</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <dialog id="folder_modal" class="modal">
+        <div class="modal-box">
+            <h3 class="font-bold text-lg">New Folder</h3>
+            <form onsubmit="createFolder(event)" class="py-4">
+                <input type="text" id="new-folder-name" required placeholder="Folder Name"
+                    class="input input-bordered w-full">
+                <div class="modal-action">
+                    <button type="button" class="btn" onclick="folder_modal.close()">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Create</button>
+                </div>
+            </form>
+        </div>
+        <form method="dialog" class="modal-backdrop"><button>close</button></form>
+    </dialog>
+
+    <script>
+        const token = localStorage.getItem('token');
+        if (!token) window.location.href = '/';
+
+        let allLinks = [];
+        let allFolders = [];
+        let allTags = [];
+        let selectedTagIds = [];
+        let currentFilter = 'all';
+
+        async function init() {
+            const savedTheme = localStorage.getItem('theme') || 'light';
+            document.documentElement.setAttribute('data-theme', savedTheme);
+            document.getElementById('theme-toggle').checked = savedTheme === 'dark';
+
+            try {
+                const res = await fetch('/api/users/me', { headers: { 'Authorization': `Bearer ${token}` } });
+                if (!res.ok) throw new Error();
+                const user = await res.json();
+
+                document.getElementById('user-name').innerText = user.name || 'User';
+                document.getElementById('user-initials').innerText = (user.name || 'U')[0].toUpperCase();
+                if (user.role === 'admin') document.getElementById('admin-section').classList.remove('hidden');
+
+                await Promise.all([fetchFolders(), fetchTags(), fetchLinks()]);
+                lucide.createIcons();
+            } catch (e) {
+                console.error(e);
+                logout();
+            }
+        }
+
+        function toggleTheme() {
+            const html = document.documentElement;
+            const current = html.getAttribute('data-theme');
+            const target = current === 'light' ? 'dark' : 'light';
+            html.setAttribute('data-theme', target);
+            localStorage.setItem('theme', target);
+        }
+
+        async function fetchFolders() {
+            const res = await fetch('/api/folders', { headers: { 'Authorization': `Bearer ${token}` } });
+            allFolders = await res.json();
+            renderFolders();
+        }
+        async function fetchTags() {
+            const res = await fetch('/api/tags', { headers: { 'Authorization': `Bearer ${token}` } });
+            allTags = await res.json();
+            renderTagsManager();
+        }
+        async function fetchLinks() {
+            const res = await fetch('/api/links', { headers: { 'Authorization': `Bearer ${token}` } });
+            allLinks = await res.json();
+            renderLinks();
+        }
+
+        function renderFolders() {
+            const list = document.getElementById('folder-list');
+            list.innerHTML = allFolders.map(f => `
+                <div class="folder-item group flex items-center justify-between w-full hover:bg-base-200 rounded-lg pr-2">
+                    <button onclick="filterLinks(${f.ID})" class="btn btn-ghost btn-sm flex-1 justify-start gap-3 folder-btn pl-2" data-id="${f.ID}">
+                        <i data-lucide="folder" class="w-4 h-4 text-base-content/50"></i> <span class="truncate">${f.name}</span>
+                    </button>
+                    <div class="folder-actions gap-1">
+                        <button onclick="deleteFolder(${f.ID})" class="btn btn-xs btn-ghost btn-square text-error" title="Delete"><i data-lucide="trash-2" class="w-3 h-3"></i></button>
+                    </div>
+                </div>
+            `).join('');
+
+            const select = document.getElementById('folder-select');
+            select.innerHTML = '<option value="">Unsorted</option>' + allFolders.map(f => `
+                <option value="${f.ID}">${f.name}</option>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderLinks() {
+            const grid = document.getElementById('link-grid');
+            const search = document.getElementById('search-input').value.toLowerCase();
+
+            let filtered = allLinks.filter(l => {
+                if (currentFilter === 'all' && l.is_archived) return false;
+                if (currentFilter === 'favorites' && !l.is_favorite) return false;
+                if (currentFilter === 'favorites' && l.is_archived) return false;
+                if (currentFilter === 'archive' && !l.is_archived) return false;
+                if (typeof currentFilter === 'number' && l.folder_id !== currentFilter) return false;
+                if (typeof currentFilter === 'number' && l.is_archived) return false;
+
+                if (search) {
+                    const matchTitle = (l.title || '').toLowerCase().includes(search);
+                    const matchUrl = (l.url || '').toLowerCase().includes(search);
+                    const matchTags = (l.tags || []).some(t => t.name.toLowerCase().includes(search));
+                    if (!matchTitle && !matchUrl && !matchTags) return false;
+                }
+                return true;
+            });
+
+            document.getElementById('link-count').innerText = `${filtered.length} items`;
+
+            let titleText = 'All Snaps';
+            if (currentFilter === 'favorites') titleText = 'Favorites';
+            else if (currentFilter === 'archive') titleText = 'Archive';
+            else if (typeof currentFilter === 'number') titleText = allFolders.find(f => f.ID === currentFilter)?.name || 'Folder';
+            document.getElementById('page-title').innerText = titleText;
+
+            if (filtered.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-20 opacity-50">No links found</div>`;
+                return;
+            }
+
+            grid.innerHTML = filtered.map(l => {
+                const folderName = l.folder_id ? allFolders.find(f => f.ID === l.folder_id)?.name : 'Unsorted';
+                const tagsHtml = (l.tags || []).map(t => `<span class="badge badge-${t.color} badge-xs text-white border-0">${t.name}</span>`).join('');
+
+                return `
+                <div class="card bg-base-100 shadow-sm border border-base-200 hover:shadow-md transition-all group">
+                    <figure class="aspect-video bg-base-200 relative overflow-hidden">
+                        <img src="${l.screenshot_path}" class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
+                        <div class="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                             <a href="${l.url}" target="_blank" class="btn btn-sm btn-circle btn-ghost text-white" title="Visit"><i data-lucide="external-link" class="w-4 h-4"></i></a>
+                             <button onclick="editLink(${l.ID})" class="btn btn-sm btn-circle btn-ghost text-white" title="Edit"><i data-lucide="pencil" class="w-4 h-4"></i></button>
+                             <button onclick="deleteLink(${l.ID})" class="btn btn-sm btn-circle btn-ghost text-error" title="Delete"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                             <button onclick="toggleArchive(${l.ID}, ${l.is_archived})" class="btn btn-sm btn-circle btn-ghost text-white" title="${l.is_archived ? 'Unarchive' : 'Archive'}"><i data-lucide="${l.is_archived ? 'rotate-ccw' : 'archive'}" class="w-4 h-4"></i></button>
+                        </div>
+                        <button onclick="toggleFavorite(${l.ID}, ${l.is_favorite})" class="absolute top-2 right-2 btn btn-xs btn-circle ${l.is_favorite ? 'btn-error text-white' : 'btn-ghost bg-black/20 text-white'} border-0">
+                            <i data-lucide="heart" class="w-3 h-3 ${l.is_favorite ? 'fill-current' : ''}"></i>
+                        </button>
+                    </figure>
+                    <div class="card-body p-4 gap-1">
+                        <h2 class="card-title text-sm font-bold truncate" title="${l.title || 'Untitled'}">${l.title || 'Untitled'}</h2>
+                        <a href="${l.url}" target="_blank" class="text-xs text-primary truncate hover:underline mb-2 block">${l.url}</a>
+                        <div class="flex flex-wrap gap-1 mb-2 min-h-[1.25rem]">${tagsHtml}</div>
+                        <div class="card-actions justify-end mt-auto">
+                             <div class="badge badge-ghost badge-sm text-[10px] opacity-60 flex gap-1">
+                                <i data-lucide="folder" class="w-3 h-3"></i> ${folderName}
+                             </div>
+                        </div>
+                    </div>
+                </div>
+            `}).join('');
+            lucide.createIcons();
+        }
+
+        function renderTagsManager() {
+            const grid = document.getElementById('tags-manager-grid');
+            if (allTags.length === 0) {
+                grid.innerHTML = `<div class="col-span-full text-center py-10 opacity-50">No tags created yet.</div>`;
+                return;
+            }
+            grid.innerHTML = allTags.map(t => `
+                <div class="card bg-base-100 border border-base-200 shadow-sm flex-row items-center p-3 justify-between">
+                    <div class="flex items-center gap-2">
+                        <div class="w-4 h-4 rounded-full bg-${getTailwindColor(t.color)}"></div>
+                        <span class="font-medium">${t.name}</span>
+                    </div>
+                    <button onclick="deleteTag(${t.ID})" class="btn btn-ghost btn-xs btn-square text-error"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                </div>
+            `).join('');
+            lucide.createIcons();
+        }
+
+        function renderTagSelection() {
+            const container = document.getElementById('tag-selection-area');
+            if (allTags.length === 0) {
+                container.innerHTML = `<span class="text-xs opacity-50 italic">No tags found. Create them in Tags Manager.</span>`;
+                return;
+            }
+            container.innerHTML = allTags.map(t => {
+                const isSelected = selectedTagIds.includes(t.ID);
+                return `
+                <span onclick="toggleTag(${t.ID})" 
+                      class="badge ${isSelected ? 'badge-' + t.color : 'badge-ghost'} cursor-pointer hover:scale-105 transition select-none">
+                    ${t.name}
+                </span>
+            `}).join('');
+        }
+
+        async function createTagFromManager(e) {
+            e.preventDefault();
+            const name = document.getElementById('manager-tag-name').value;
+            const color = document.getElementById('manager-tag-color').value;
+            if (!name) return;
+            const res = await fetch('/api/tags', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, color })
+            });
+            if (res.ok) {
+                const newTag = await res.json();
+                allTags.push(newTag);
+                document.getElementById('manager-tag-name').value = '';
+                renderTagsManager();
+            }
+        }
+
+        async function deleteTag(id) {
+            if (!confirm("Delete this tag? It will be removed from all links.")) return;
+            await fetch(`/api/tags/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            allTags = allTags.filter(t => t.ID !== id);
+            renderTagsManager();
+        }
+
+        function toggleTag(id) {
+            if (selectedTagIds.includes(id)) selectedTagIds = selectedTagIds.filter(i => i !== id);
+            else selectedTagIds.push(id);
+            renderTagSelection();
+        }
+
+        function openSaveModal() {
+            document.getElementById('modal-title').innerText = "Save New Link";
+            document.getElementById('save-btn-text').innerText = "Snap & Save";
+            document.getElementById('edit-link-id').value = "";
+            document.getElementById('url-input').value = "";
+            document.getElementById('title-input').value = "";
+            document.getElementById('folder-select').value = "";
+            selectedTagIds = [];
+            renderTagSelection();
+            document.getElementById('save_modal').showModal();
+        }
+
+        function editLink(id) {
+            const link = allLinks.find(l => l.ID === id);
+            if (!link) return;
+            document.getElementById('modal-title').innerText = "Edit Link";
+            document.getElementById('save-btn-text').innerText = "Update Link";
+            document.getElementById('edit-link-id').value = link.ID;
+            document.getElementById('url-input').value = link.url;
+            document.getElementById('title-input').value = link.title;
+            document.getElementById('folder-select').value = link.folder_id || "";
+            selectedTagIds = (link.tags || []).map(t => t.ID);
+            renderTagSelection();
+            document.getElementById('save_modal').showModal();
+        }
+
+        async function handleLinkSubmit(e) {
+            e.preventDefault();
+            const id = document.getElementById('edit-link-id').value;
+            const url = document.getElementById('url-input').value;
+            const title = document.getElementById('title-input').value;
+            const folderId = document.getElementById('folder-select').value;
+
+            const payload = {
+                url, title,
+                folder_id: folderId ? parseInt(folderId) : null,
+                tag_ids: selectedTagIds
+            };
+
+            let method = 'POST';
+            let path = '/api/links';
+            if (id) {
+                method = 'PUT';
+                path = `/api/links/${id}`;
+            }
+
+            await fetch(path, {
+                method: method,
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            });
+
+            document.getElementById('save_modal').close();
+            fetchLinks();
+        }
+
+        async function deleteLink(id) {
+            if (!confirm("Delete this link?")) return;
+            await fetch(`/api/links/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            fetchLinks();
+        }
+
+        async function toggleFavorite(id, currentStatus) {
+            await fetch(`/api/links/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_favorite: !currentStatus })
+            });
+            fetchLinks();
+        }
+
+        async function toggleArchive(id, currentStatus) {
+            await fetch(`/api/links/${id}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ is_archived: !currentStatus })
+            });
+            fetchLinks();
+        }
+
+        async function createFolder(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-folder-name').value;
+            await fetch('/api/folders', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name })
+            });
+            document.getElementById('new-folder-name').value = '';
+            document.getElementById('folder_modal').close();
+            fetchFolders();
+        }
+
+        async function deleteFolder(id) {
+            if (!confirm("Delete this folder? Links inside will become unsorted.")) return;
+            await fetch(`/api/folders/${id}`, { method: 'DELETE', headers: { 'Authorization': `Bearer ${token}` } });
+            fetchFolders();
+            fetchLinks();
+        }
+
+        function filterLinks(filter) {
+            currentFilter = filter;
+            document.getElementById('nav-all').classList.toggle('active', filter === 'all');
+            document.getElementById('nav-favorites').classList.toggle('active', filter === 'favorites');
+            document.getElementById('nav-archive').classList.toggle('active', filter === 'archive');
+            document.getElementById('nav-tags').classList.remove('active');
+            document.querySelectorAll('.folder-btn').forEach(btn => {
+                btn.classList.toggle('active', parseInt(btn.dataset.id) === filter);
+            });
+            switchView('library');
+            renderLinks();
+        }
+
+        function switchView(view) {
+            document.getElementById('view-library').classList.add('hidden');
+            document.getElementById('view-admin').classList.add('hidden');
+            document.getElementById('view-tags').classList.add('hidden');
+
+            document.getElementById('view-' + view).classList.remove('hidden');
+
+            document.getElementById('nav-admin').classList.toggle('active', view === 'admin');
+            document.getElementById('nav-tags').classList.toggle('active', view === 'tags');
+
+            if (view === 'admin') fetchAdminStats();
+            if (view === 'tags') renderTagsManager();
+        }
+
+        async function fetchAdminStats() {
+            const res = await fetch('/api/admin/status', { headers: { 'Authorization': `Bearer ${token}` } });
+            if (res.ok) {
+                const data = await res.json();
+                document.getElementById('stat-users').innerText = data.users_count;
+                document.getElementById('stat-links').innerText = data.links_count;
+                document.getElementById('stat-uptime').innerText = data.uptime;
+                document.getElementById('stat-mem').innerText = data.memory_usage;
+            }
+        }
+
+        async function createUser(e) {
+            e.preventDefault();
+            const name = document.getElementById('new-name').value;
+            const email = document.getElementById('new-email').value;
+            const password = document.getElementById('new-pass').value;
+            const res = await fetch('/api/admin/users', {
+                method: 'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name, email, password })
+            });
+            if (res.ok) { alert('User created'); e.target.reset(); fetchAdminStats(); }
+            else { const d = await res.json(); alert(d.error); }
+        }
+
+        function getTailwindColor(daisyColor) {
+            const map = {
+                'primary': 'blue-500', 'secondary': 'pink-500', 'accent': 'teal-500',
+                'success': 'green-500', 'warning': 'yellow-500', 'error': 'red-500'
+            };
+            return map[daisyColor] || 'gray-500';
+        }
+
+        function logout() { localStorage.clear(); window.location.href = '/'; }
+
+        init();
+    </script>
+</body>
+
+</html>
